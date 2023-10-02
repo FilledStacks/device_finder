@@ -542,7 +542,8 @@ class DeviceFinder {
     // group 4: operating system
     RegExp pattern = RegExp(r'^(.*?)\s*•\s*(.*?)\s*•\s*(.*?)\s*•\s*(.*?)\s*$');
 
-    final devices = <AndroidDevice>[];
+    final androidDevices = <AndroidDevice>[];
+    final iOSDevices = <IosDevice>[];
 
     LineSplitter().convert(result.stdout).forEach((line) {
       Iterable<RegExpMatch> matches = pattern.allMatches(line);
@@ -552,7 +553,9 @@ class DeviceFinder {
             match.group(2) ?? "identifier can't be found in $match";
         String name = match.group(1) ?? "name can't be found in $match";
         if (match.group(4)!.toLowerCase().contains('android')) {
-          devices.add(AndroidDevice(name, identifier));
+          androidDevices.add(AndroidDevice(name, identifier));
+        } else if (match.group(4)!.toLowerCase().contains('ios')) {
+          iOSDevices.add(IosDevice(name, identifier));
         }
       });
     });
@@ -560,7 +563,7 @@ class DeviceFinder {
     if ((await result.exitCode) != 0)
       throw 'Failed to find android device with `adb devices` exit code $exitCode';
 
-    return devices;
+    return [...androidDevices, ...iOSDevices];
   }
 }
 
