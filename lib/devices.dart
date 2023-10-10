@@ -366,7 +366,7 @@ class IOSSimulator extends Device {
       });
       final port = await SessionUtils.findUnusedPort();
       final manager = new ProcessManager();
-      var spawn = await manager.spawn(executablePath, [
+      await manager.spawn(executablePath, [
         'simctl',
         'launch',
         identifier,
