@@ -7,6 +7,7 @@ class SessionUtils {
     required String adbPath,
     required String data,
     required String identifier,
+    required bool isAndroidDevice,
   }) async {
     // Grab the first http/https url
     var debugUrlMatcher = new RegExp(
@@ -29,16 +30,18 @@ class SessionUtils {
 
     print('Forwarding local port $localPort to remote port $remotePort');
 
-    await Process.run(
-      adbPath,
-      [
-        '-s',
-        identifier,
-        'forward',
-        'tcp:$localPort',
-        'tcp:$remotePort',
-      ],
-    );
+    if (isAndroidDevice) {
+      await Process.run(
+        adbPath,
+        [
+          '-s',
+          identifier,
+          'forward',
+          'tcp:$localPort',
+          'tcp:$remotePort',
+        ],
+      );
+    }
 
     return DebugSessionInformation(
       debugUrl: debugUrl,

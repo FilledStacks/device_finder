@@ -77,10 +77,10 @@ abstract class Device {
         '${cliPath.split('bin').first}dependencies/macos/platform-tools/adb';
 
     final debugInformation = await SessionUtils.getDebugSession(
-      adbPath: adbPath,
-      data: debugUrl,
-      identifier: identifier,
-    );
+        adbPath: adbPath,
+        data: debugUrl,
+        identifier: identifier,
+        isAndroidDevice: this is AndroidDevice);
 
     if (debugInformation == null) {
       throw 'Output is fucked up. Check out what is happening above ';
@@ -240,6 +240,7 @@ class AndroidDevice extends Device {
       adbPath: executablePath,
       data: data,
       identifier: identifier,
+      isAndroidDevice: true,
     );
 
     if (debugInformation == null) {
