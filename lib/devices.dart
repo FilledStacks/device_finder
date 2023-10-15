@@ -39,7 +39,9 @@ abstract class Device {
 
   Future<bool> installApp(String executablePath, ApplicationPackage app);
 
-  Future<DebugSessionInformation> launchFlutterApp() async {
+  Future<DebugSessionInformation> launchFlutterApp({
+    required String adbPath,
+  }) async {
     print('launchFlutterApp - flutter run -d RZCT90XD8WZ');
 
     Completer flutterDebugSessionCompleter = Completer();
@@ -71,10 +73,6 @@ abstract class Device {
     // flutterProcessLogOutputSubscription.cancel();
 
     print('debugUrl: $debugUrl');
-
-    final cliPath = Platform.script.toFilePath();
-    final adbPath =
-        '${cliPath.split('bin').first}dependencies/macos/platform-tools/adb';
 
     final debugInformation = await SessionUtils.getDebugSession(
         adbPath: adbPath,
