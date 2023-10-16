@@ -1,7 +1,6 @@
 name: device_finder
 description: A package that helps with device specific actions
 version: 1.0.0
-author: FilledStacks (Pty) Ltd
 homepage:
 
 environment:

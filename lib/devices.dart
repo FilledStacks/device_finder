@@ -46,29 +46,24 @@ abstract class Device {
 
     Completer flutterDebugSessionCompleter = Completer();
     late String debugUrl;
-    late StreamSubscription<String> flutterProcessLogOutputSubscription;
 
     final Future<Process> flutterDebugSessionFuture = Process.start('flutter', [
       'run',
       '-d',
       identifier,
     ]).then((p) {
-      flutterProcessLogOutputSubscription =
-          p.stdout.transform(new Utf8Decoder()).listen((logLine) {
+      p.stdout.transform(new Utf8Decoder()).listen((logLine) {
         if (logLine.contains('is available at:')) {
           print('Debug url session found.\nInfo = $logLine');
           debugUrl = logLine;
-          // flutterDebugSessionCompleter.complete();
         }
       });
-      // p.stderr.transform(new Utf8Decoder()).listen(print);
-      // stdin.pipe(p.stdin);
 
       return p;
     });
 
     await flutterDebugSessionCompleter.future;
-    final flutterDebugSession = await flutterDebugSessionFuture;
+    await flutterDebugSessionFuture;
 
     // flutterProcessLogOutputSubscription.cancel();
 
@@ -190,6 +185,7 @@ class AndroidDevice extends Device {
       await Process.run(
         executablePath,
         ['-s', identifier, 'shell', 'pm', 'grant', app.id, permission!],
+        // ignore: invalid_return_type_for_catch_error
       ).catchError((err) => print('Unable to grant permission: $permission'));
     }
   }
@@ -373,6 +369,7 @@ class IOSSimulator extends Device {
         '--start-paused',
         '--observatory-port=$port',
         // ...?launchArgs,
+        // ignore: body_might_complete_normally_catch_error
       ]).catchError((err) {
         print('SPAWN ERROR');
         print(err);
