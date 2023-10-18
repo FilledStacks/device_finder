@@ -1,15 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-/// Returns the application data directory where the application
-/// has rights to modify files
-Future<Directory> _getApplicationDataDirectory() async {
-  // var ref = await path.getApplicationSupportDirectory();
-  // print('Installation reference: ${ref.path}');
-  // return ref;
-  return Future.value(Directory.current);
-}
-
 abstract class ApplicationPackage {
   ApplicationPackage({
     required this.id,
