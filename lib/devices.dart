@@ -42,24 +42,35 @@ abstract class Device {
   Future<DebugSessionInformation> launchFlutterApp({
     required String adbPath,
   }) async {
-    print('launchFlutterApp - flutter run -d RZCT90XD8WZ');
+    stdout.writeln('🤖 launchFlutterApp - flutter run -d RZCT90XD8WZ');
 
     Completer flutterDebugSessionCompleter = Completer();
     late String debugUrl;
 
-    final Future<Process> flutterDebugSessionFuture = Process.start('flutter', [
+    final flutterDebugSessionFuture = Process.start('flutter', [
       'run',
       '-d',
       identifier,
     ]).then((p) {
-      p.stdout.transform(new Utf8Decoder()).listen((logLine) {
+      p.stdout.transform(Utf8Decoder()).listen((logLine) {
         if (logLine.contains('is available at:')) {
-          print('Debug url session found.\nInfo = $logLine');
+          stdout.writeln('🤖 Debug url session found.\nInfo = $logLine');
           debugUrl = logLine;
         }
       });
 
+      p.stderr.transform(utf8.decoder).listen((data) {
+        stdout.writeln('🔴 $data');
+      });
+
+      p.exitCode.then((exitCode) {
+        stdout.writeln('🤖 Exit code: $exitCode');
+      });
+
       return p;
+    }).catchError((e) {
+      stdout.writeln('🔴 Error:${e.toString()}');
+      throw 'Error occur while trying to run the application';
     });
 
     await flutterDebugSessionCompleter.future;
@@ -67,17 +78,19 @@ abstract class Device {
 
     // flutterProcessLogOutputSubscription.cancel();
 
-    print('debugUrl: $debugUrl');
+    stdout.writeln('🤖 debugUrl: $debugUrl');
 
     final debugInformation = await SessionUtils.getDebugSession(
-        adbPath: adbPath,
-        data: debugUrl,
-        identifier: identifier,
-        isAndroidDevice: this is AndroidDevice);
+      adbPath: adbPath,
+      data: debugUrl,
+      identifier: identifier,
+      isAndroidDevice: this is AndroidDevice,
+    );
 
     if (debugInformation == null) {
       throw 'Output is fucked up. Check out what is happening above ';
     }
+
     return debugInformation;
   }
 
@@ -127,9 +140,11 @@ abstract class Device {
         return WindowsDevice(name, identifier);
       default:
         throw ArgumentError(
-            "Unknown Device Platform ${json[ksJsonFieldDevicePlatform]}");
+          'Unknown Device Platform ${json[ksJsonFieldDevicePlatform]}',
+        );
     }
   }
+
   factory Device.fakeAndroidDevice(Map<String, dynamic> json) {
     final String name = json[ksJsonFieldDeviceName];
     final String identifier = json[ksJsonFieldDeviceIdentifier];
@@ -161,21 +176,30 @@ class AndroidDevice extends Device {
     String executablePath,
     covariant AndroidApk app,
   ) async {
-    await clearAppData(executablePath, app);
+    try {
+      await clearAppData(executablePath, app);
 
-    var spawn = await Process.run(
-      executablePath,
-      ['-s', identifier, 'install', '-r', app.filePath],
-    );
-    var exitCode = spawn.exitCode;
-    print(spawn.stderr);
+      final spawn = await Process.run(
+        executablePath,
+        ['-s', identifier, 'install', '-r', app.filePath],
+      );
 
-    // Previous app data is retained using the above command
-    // We need to clear the data manually for a fresh install
-    await grantPermissions(executablePath, app);
-    if (exitCode != 0)
-      throw 'Failed to install ${app.filePath} on $identifier cause of ${spawn.stderr}';
-    return true;
+      stdout.writeln('🤖 ${spawn.stdout}');
+
+      // Previous app data is retained using the above command
+      // We need to clear the data manually for a fresh install
+      await grantPermissions(executablePath, app);
+
+      if (spawn.exitCode != 0) {
+        stdout.writeln('🤖 ${spawn.stderr}');
+        throw 'Failed to install ${app.filePath} on $identifier cause of ${spawn.stderr}';
+      }
+
+      return true;
+    } catch (e, s) {
+      stdout.writeln('🔴 Error:${e.toString()} stackTrace:\n$s');
+      return false;
+    }
   }
 
   Future<void> grantPermissions(String executablePath, AndroidApk app) async {
@@ -526,40 +550,55 @@ class WindowsDevice extends Device {
 }
 
 class DeviceFinder {
-  static Future<List<Device>> listReady() async {
-    ProcessResult result = await Process.run(
-      'flutter',
-      ['devices'],
-    );
+  static Future<List<Device>> listReady({bool verbose = false}) async {
+    try {
+      final flutterDevicesProcess = await Process.run('flutter', [
+        'devices',
+        if (verbose) '-v',
+      ]);
 
-    // group 1: name
-    // group 2: id
-    // group 3: architecture
-    // group 4: operating system
-    RegExp pattern = RegExp(r'^(.*?)\s*•\s*(.*?)\s*•\s*(.*?)\s*•\s*(.*?)\s*$');
+      // group 1: name
+      // group 2: id
+      // group 3: architecture
+      // group 4: operating system
+      RegExp pattern =
+          RegExp(r'^(.*?)\s*•\s*(.*?)\s*•\s*(.*?)\s*•\s*(.*?)\s*$');
 
-    final androidDevices = <AndroidDevice>[];
-    final iOSDevices = <IosDevice>[];
+      final androidDevices = <AndroidDevice>[];
+      final iOSDevices = <IosDevice>[];
 
-    LineSplitter().convert(result.stdout).forEach((line) {
-      Iterable<RegExpMatch> matches = pattern.allMatches(line);
-
-      matches.forEach((RegExpMatch match) {
-        String identifier =
-            match.group(2) ?? "identifier can't be found in $match";
-        String name = match.group(1) ?? "name can't be found in $match";
-        if (match.group(4)!.toLowerCase().contains('android')) {
-          androidDevices.add(AndroidDevice(name, identifier));
-        } else if (match.group(4)!.toLowerCase().contains('ios')) {
-          iOSDevices.add(IosDevice(name, identifier));
+      LineSplitter().convert(flutterDevicesProcess.stdout).forEach((line) {
+        if (verbose) {
+          stdout.writeln('🤖 $line');
         }
+
+        Iterable<RegExpMatch> matches = pattern.allMatches(line);
+
+        matches.forEach((RegExpMatch match) {
+          String identifier =
+              match.group(2) ?? "identifier can't be found in $match";
+          String name = match.group(1) ?? "name can't be found in $match";
+          if (match.group(4)!.toLowerCase().contains('android')) {
+            androidDevices.add(AndroidDevice(name, identifier));
+          } else if (match.group(4)!.toLowerCase().contains('ios')) {
+            iOSDevices.add(IosDevice(name, identifier));
+          }
+        });
       });
-    });
 
-    if ((await result.exitCode) != 0)
-      throw 'Failed to find android device with `adb devices` exit code $exitCode';
+      if (flutterDevicesProcess.exitCode != 0) {
+        if (verbose) {
+          stdout.writeln('🔴 ${flutterDevicesProcess.stderr}');
+        }
 
-    return [...androidDevices, ...iOSDevices];
+        throw 'Failed to find android device with `adb devices` exit code $exitCode';
+      }
+
+      return [...androidDevices, ...iOSDevices];
+    } catch (e, s) {
+      stdout.writeln('🔴 Error:${e.toString()} \nStackTrace:$s');
+      return [];
+    }
   }
 }
 
@@ -587,6 +626,7 @@ class _AndroidDevicesFinder {
   }
 
   static Future<List<Device>> listReady(String adbPath) async {
+    print('🐬 enter 2');
     ProcessResult result = await Process.run(
       'flutter',
       ['devices'],
@@ -621,6 +661,7 @@ class _AndroidDevicesFinder {
 
 class _IOSSimulatorDeviceFinder {
   static Future<List<Device>> listReady() async {
+    print('🐬 enter 3');
     print('iOSDeviceFinder:listDevices');
     const String _xcrunPath = '/usr/bin/xcrun';
 

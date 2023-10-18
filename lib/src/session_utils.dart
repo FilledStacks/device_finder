@@ -8,6 +8,7 @@ class SessionUtils {
     required String data,
     required String identifier,
     required bool isAndroidDevice,
+    bool verbose = false,
   }) async {
     // Grab the first http/https url
     var debugUrlMatcher = new RegExp(
@@ -15,7 +16,9 @@ class SessionUtils {
     var match = debugUrlMatcher.allMatches(data).first;
     String debugUrl = data.substring(match.start, match.end);
 
-    print('Found debugUrl at $debugUrl');
+    if (verbose) {
+      stdout.writeln('🤖 Found debugUrl at $debugUrl');
+    }
 
     // The debugUrl is local to the device running the app. This means that this machine running
     // sweetcore is unaware of this url and its port. FlutterDriver will be unable to connect to the app.
@@ -28,7 +31,11 @@ class SessionUtils {
     var portMatch = portMatcher.allMatches(debugUrl).first;
     var remotePort = debugUrl.substring(portMatch.start + 1, portMatch.end);
 
-    print('Forwarding local port $localPort to remote port $remotePort');
+    if (verbose) {
+      stdout.writeln(
+        '🤖 Forwarding local port $localPort to remote port $remotePort',
+      );
+    }
 
     if (isAndroidDevice) {
       await Process.run(
