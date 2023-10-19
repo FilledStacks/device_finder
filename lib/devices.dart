@@ -197,20 +197,30 @@ class AndroidDevice extends Device {
 
       return true;
     } catch (e, s) {
-      stdout.writeln('🔴 Error:${e.toString()} stackTrace:\n$s');
+      stdout.writeln('🔴 Error:${e.toString()} StackTrace:\n$s');
       return false;
     }
   }
 
   Future<void> grantPermissions(String executablePath, AndroidApk app) async {
-    print('Fetching required permissions');
-    final List<String?> permissions = await app.getPermissions();
+    stdout.writeln('🤖 Fetching required permissions...');
+
+    final permissions = await app.getPermissions();
+
     for (String? permission in permissions) {
       await Process.run(
         executablePath,
         ['-s', identifier, 'shell', 'pm', 'grant', app.id, permission!],
         // ignore: invalid_return_type_for_catch_error
-      ).catchError((err) => print('Unable to grant permission: $permission'));
+      ).then((result) {
+        stdout.writeln('🤖 ${result.stdout}');
+
+        if (result.exitCode != 0) {
+          stdout.writeln('🤖 ${result.stderr}');
+        }
+      }).catchError((e) {
+        stdout.writeln('🔴 Unable to grant permission: $permission');
+      });
     }
   }
 
@@ -219,8 +229,9 @@ class AndroidDevice extends Device {
     String executablePath,
     covariant AndroidApk app,
   ) async {
-    print('executablePath:$executablePath app:$app');
-    var spawn = await Process.run(executablePath, [
+    stdout.writeln('🤖 executablePath:$executablePath app:$app');
+
+    final spawn = await Process.run(executablePath, [
       '-s',
       identifier,
       'shell',
@@ -231,11 +242,15 @@ class AndroidDevice extends Device {
       '${app.id}/${app.launchActivity}',
       '-W', // To get the most recent debugUrl
     ]);
-    var exitCode = spawn.exitCode;
-    if (exitCode != 0)
-      throw 'Failed to launch ${app.launchActivity} on $identifier. You might have given an incorrect Activity or package name.';
 
-    var logProcResults = await Process.run(executablePath, [
+    stdout.writeln('🤖 ${spawn.stdout}');
+
+    if (spawn.exitCode != 0) {
+      stdout.writeln('🤖 ${spawn.stderr}');
+      throw 'Failed to launch ${app.launchActivity} on $identifier. You might have given an incorrect Activity or package name.';
+    }
+
+    final logProcResults = await Process.run(executablePath, [
       '-s',
       identifier,
       'logcat',
@@ -245,58 +260,75 @@ class AndroidDevice extends Device {
       // '-T',
       // '$time' // To get the most recent debugUrl
     ]);
-    exitCode = logProcResults.exitCode;
-    if (exitCode != 0) {
-      throw 'Logcat failed to run with error message: ' +
-          logProcResults.stderr.toString();
-    }
 
-    final data = logProcResults.stdout.toString();
-    print('data: $data');
+    stdout.writeln('🤖 ${logProcResults.stdout}');
+
+    if (logProcResults.exitCode != 0) {
+      stdout.writeln('🤖 ${logProcResults.stderr}');
+      throw 'Logcat failed to run with error message: ${logProcResults.stderr}';
+    }
 
     final debugInformation = await SessionUtils.getDebugSession(
       adbPath: executablePath,
-      data: data,
+      data: logProcResults.stdout as String,
       identifier: identifier,
       isAndroidDevice: true,
     );
 
     if (debugInformation == null) {
-      throw 'Output from logcat does not contain debug url: ' +
-          logProcResults.stderr.toString();
+      throw 'Output from logcat does not contain debug url: ${logProcResults.stderr}';
     }
+
     return debugInformation;
   }
 
   Future<bool> clearAppData(
-      String executablePath, covariant AndroidApk app) async {
-    var process = await Process.run(
+    String executablePath,
+    covariant AndroidApk app,
+  ) async {
+    final result = await Process.run(
       executablePath,
       ['-s', identifier, 'uninstall', app.id],
     );
-    return process.exitCode == 0;
+
+    stdout.writeln('🤖 ${result.stdout}');
+    if (result.exitCode != 0) {
+      stdout.writeln('🤖 ${result.stderr}');
+      return false;
+    }
+
+    return true;
   }
 
   @override
   Future<bool> killApp(String executablePath, covariant AndroidApk app) async {
-    var spawn = await Process.run(
+    final result = await Process.run(
       executablePath,
       ['-s', identifier, 'shell', 'am', 'force-stop', app.id],
     );
 
-    var exitCode = await spawn.exitCode;
+    stdout.writeln('🤖 ${result.stdout}');
+    if (result.exitCode != 0) {
+      stdout.writeln('🤖 ${result.stderr}');
+      throw 'Failed to kill ${app.id} on $identifier';
+    }
 
-    if (exitCode != 0) throw 'Failed to kill ${app.id} on $identifier';
     return true;
   }
 
   @override
   Future<bool> pressHomeButton(String executablePath) async {
-    var processResult = await Process.run(executablePath,
-        ['-s', identifier, 'shell', 'input', 'keyevent', 'KEYCODE_HOME']);
+    final result = await Process.run(
+      executablePath,
+      ['-s', identifier, 'shell', 'input', 'keyevent', 'KEYCODE_HOME'],
+    );
 
-    if (processResult.exitCode != 0)
+    stdout.writeln('🤖 ${result.stdout}');
+    if (result.exitCode != 0) {
+      stdout.writeln('🤖 ${result.stderr}');
       throw 'Failed to press home button on $identifier';
+    }
+
     return true;
   }
 
@@ -305,11 +337,17 @@ class AndroidDevice extends Device {
 
   @override
   Future<bool> pressBackButton(String executablePath) async {
-    var processResult = await Process.run(executablePath,
-        ['-s', identifier, 'shell', 'input', 'keyevent', 'KEYCODE_BACK']);
+    final result = await Process.run(
+      executablePath,
+      ['-s', identifier, 'shell', 'input', 'keyevent', 'KEYCODE_BACK'],
+    );
 
-    if (processResult.exitCode != 0)
+    stdout.writeln('🤖 ${result.stdout}');
+    if (result.exitCode != 0) {
+      stdout.writeln('🤖 ${result.stderr}');
       throw 'Failed to press back button on $identifier';
+    }
+
     return true;
   }
 }
@@ -365,26 +403,37 @@ class IOSSimulator extends Device {
   @override
   Future<bool> installApp(String executablePath, covariant IOSApp app) async {
     try {
-      var spawn = await ProcessManager().spawn(
-          executablePath, ['simctl', 'install', identifier, app.filePath]);
-      if (await spawn.exitCode != 0) throw '';
+      final result = await ProcessManager().spawn(
+        executablePath,
+        ['simctl', 'install', identifier, app.filePath],
+      );
+
+      stdout.writeln('🤖 ${result.stdout}');
+      if (result.exitCode != 0) {
+        stdout.writeln('🤖 ${result.stderr}');
+        throw 'Failed to install app';
+      }
+
       return true;
-    } catch (exception) {
-      print(
-          'Unable to install ${app.filePath} on $identifier. This is sometimes caused by a malformed plist file:\n$exception');
+    } catch (e, s) {
+      stdout.writeln(
+        '🔴 Unable to install ${app.filePath} on $identifier. This is sometimes caused by a malformed plist file:\n$e\nStackTrace:$s',
+      );
       return false;
     }
   }
 
   @override
   Future<DebugSessionInformation> launchAppFromBinary(
-      String executablePath, covariant IOSApp app) async {
+    String executablePath,
+    covariant IOSApp app,
+  ) async {
     try {
       await _listenToLogs(executablePath).catchError((err) {
-        print('LOG ERROR');
+        stdout.writeln('🤖 LOG ERROR');
       });
       final port = await SessionUtils.findUnusedPort();
-      final manager = new ProcessManager();
+      final manager = ProcessManager();
       await manager.spawn(executablePath, [
         'simctl',
         'launch',
@@ -394,18 +443,24 @@ class IOSSimulator extends Device {
         '--observatory-port=$port',
         // ...?launchArgs,
         // ignore: body_might_complete_normally_catch_error
-      ]).catchError((err) {
-        print('SPAWN ERROR');
-        print(err);
+      ]).then((result) {
+        stdout.writeln('🤖 ${result.stdout}');
+        if (result.exitCode != 0) {
+          stdout.writeln('🤖 ${result.stderr}');
+        }
+      }).catchError((e) {
+        stdout.writeln('🔴 SPAWN ERROR:${e.toString()}');
       });
+
       final uri = await (_uriStreamController.stream.first as FutureOr<Uri>);
+
       return DebugSessionInformation(
         debugUrl: uri.toString(),
         localPort: uri.port.toString(),
         remotePort: uri.port.toString(),
       );
-    } catch (exception) {
-      throw ('Unable to launch on $identifier. This is sometimes caused by a malformed plist file:\n$exception');
+    } catch (e) {
+      throw ('Unable to launch on $identifier. This is sometimes caused by a malformed plist file:\n${e.toString()}');
     }
   }
 
@@ -413,22 +468,31 @@ class IOSSimulator extends Device {
   @override
   Future<bool> pressHomeButton(String executablePath) async {
     try {
-      var spawn = await ProcessManager().spawn(executablePath, [
+      final spawn = await ProcessManager().spawn(executablePath, [
         'simctl',
         'launch',
         identifier,
         'com.apple.Preferences',
       ]);
-      if (await spawn.exitCode != 0) throw '';
+
+      stdout.writeln('🤖 ${spawn.stdout}');
+      if (await spawn.exitCode != 0) {
+        stdout.writeln('🤖 ${spawn.stderr}');
+        throw 'Could not simulate home button press';
+      }
+
       return true;
-    } catch (exception) {
-      print('Unable to pressHomeButton on $identifier. $exception');
+    } catch (e, s) {
+      stdout.writeln(
+        '🔴 Unable to pressHomeButton on $identifier. ${e.toString()}. StackTrace:\n$s',
+      );
       return false;
     }
   }
 
   StreamSubscription? subscription;
   Timer? timer;
+
   Future _listenToLogs(String executablePath) async {
     // Future<Process> launchDeviceUnifiedLogging (IOSSimulator device, String appName) async {
     // Make NSPredicate concatenation easier to read.
@@ -464,24 +528,30 @@ class IOSSimulator extends Device {
       predicate
     ]);
 
+    if (await process.exitCode != 0) {
+      stdout.writeln('🤖 ${process.stderr}');
+    }
+
     subscription?.cancel();
     subscription = process.stdout
         .transform<String>(utf8.decoder)
         .transform<String>(const LineSplitter())
         .listen((data) {
-      final RegExp r =
-          RegExp(r' listening on ((http|//)[a-zA-Z0-9:/=_\-\.\[\]]+)');
+      final RegExp r = RegExp(
+        r' listening on ((http|//)[a-zA-Z0-9:/=_\-\.\[\]]+)',
+      );
       final Match? match = r.firstMatch(data);
       if (match != null) {
-        print('URL ${Uri.parse(match[1]!)}');
+        stdout.writeln('🤖 URL ${Uri.parse(match[1]!)}');
         _uriStreamController.add(Uri.parse(match[1]!));
         subscription?.cancel();
         process.kill();
         timer?.cancel();
       }
     });
+
     timer = Timer(Duration(seconds: 10), () {
-      print('TIME OUT');
+      stdout.writeln('🤖 TIME OUT');
       _uriStreamController.add(null);
       process.kill();
       subscription?.cancel();
@@ -491,12 +561,20 @@ class IOSSimulator extends Device {
   @override
   Future<bool> killApp(String executablePath, covariant IOSApp app) async {
     try {
-      var spawn = await ProcessManager()
+      final spawn = await ProcessManager()
           .spawn(executablePath, ['simctl', 'terminate', identifier, app.id]);
-      if (await spawn.exitCode != 0) throw '';
+
+      stdout.writeln('🤖 ${spawn.stdout}');
+
+      if (await spawn.exitCode != 0) {
+        stdout.writeln('🔴 ${spawn.stderr}');
+        throw 'App could not be killed';
+      }
+
       return true;
-    } catch (exception) {
-      throw 'Failed to terminate ${app.id} on $identifier';
+    } catch (e) {
+      stdout.writeln('🔴 ${e.toString()}');
+      throw 'Failed to terminate ${app.id} on $identifier. ${e.toString()}';
     }
   }
 
@@ -561,8 +639,9 @@ class DeviceFinder {
       // group 2: id
       // group 3: architecture
       // group 4: operating system
-      RegExp pattern =
-          RegExp(r'^(.*?)\s*•\s*(.*?)\s*•\s*(.*?)\s*•\s*(.*?)\s*$');
+      RegExp pattern = RegExp(
+        r'^(.*?)\s*•\s*(.*?)\s*•\s*(.*?)\s*•\s*(.*?)\s*$',
+      );
 
       final androidDevices = <AndroidDevice>[];
       final iOSDevices = <IosDevice>[];
@@ -626,11 +705,7 @@ class _AndroidDevicesFinder {
   }
 
   static Future<List<Device>> listReady(String adbPath) async {
-    print('🐬 enter 2');
-    ProcessResult result = await Process.run(
-      'flutter',
-      ['devices'],
-    );
+    final result = await Process.run('flutter', ['devices']);
 
     // group 1: name
     // group 2: id
@@ -641,6 +716,7 @@ class _AndroidDevicesFinder {
     final devices = <AndroidDevice>[];
 
     LineSplitter().convert(result.stdout).forEach((line) {
+      stdout.writeln('🤖 $line');
       Iterable<RegExpMatch> matches = pattern.allMatches(line);
 
       matches.forEach((RegExpMatch match) {
@@ -652,8 +728,10 @@ class _AndroidDevicesFinder {
       });
     });
 
-    if ((await result.exitCode) != 0)
+    if (result.exitCode != 0) {
+      stdout.writeln('🔴 ${result.stderr}');
       throw 'Failed to find android device with `adb devices` exit code $exitCode';
+    }
 
     return devices;
   }
@@ -661,31 +739,33 @@ class _AndroidDevicesFinder {
 
 class _IOSSimulatorDeviceFinder {
   static Future<List<Device>> listReady() async {
-    print('🐬 enter 3');
-    print('iOSDeviceFinder:listDevices');
+    stdout.writeln('🤖 iOSDeviceFinder:listDevices');
     const String _xcrunPath = '/usr/bin/xcrun';
 
-    print('iOSDeviceFinder:listDevices - Start process ...');
-    var result = await Process.run(
-      _xcrunPath,
-      [
+    try {
+      stdout.writeln('🤖 iOSDeviceFinder:listDevices - Start process ...');
+
+      final result = await Process.run(_xcrunPath, [
         'simctl',
         'list',
         '--json',
         'devices',
-      ],
-    );
-    print('iOSDeviceFinder:listDevices - Process complete/');
+      ]);
 
-    int exitCode = result.exitCode;
-    String outputResult = result.stdout;
+      stdout.writeln('🤖 iOSDeviceFinder:listDevices - Process complete');
+      stdout.writeln('🤖 ${result.stdout}');
 
-    if (exitCode != 0)
-      throw 'Failed to find simulator devices. Exit code $exitCode. \n Output:$outputResult \ Error:${result.stderr}';
+      if (result.exitCode != 0) {
+        throw 'Failed to find simulator devices. Exit code $exitCode. \n Output:${result.stdout} \ Error:${result.stderr}';
+      }
 
-    final outputParser = CommandLineOutputParser();
+      final outputParser = CommandLineOutputParser();
 
-    return outputParser.parseDeviceListing(outputResult);
+      return outputParser.parseDeviceListing(result.stdout);
+    } catch (e, s) {
+      stdout.writeln('🔴 Error:${e.toString()} StackTrace:\n$s');
+      rethrow;
+    }
   }
 }
 
@@ -698,14 +778,14 @@ Future<List<Device>> getReadyDevices(String adbPath) async {
   try {
     devices.addAll(await _AndroidDevicesFinder.listReady(adbPath));
   } catch (e) {
-    print('Android device fetch failed: $e');
+    stdout.writeln('🔴 Android device fetch failed: ${e.toString()}');
   }
 
   if (Platform.isMacOS) {
     try {
       devices.addAll(await _IOSSimulatorDeviceFinder.listReady());
     } catch (e) {
-      print('iOS simulators fetch failed: $e');
+      stdout.writeln('🔴 iOS simulators fetch failed: ${e.toString()}');
     }
   }
 
@@ -716,9 +796,10 @@ Future<List<Device>> getReadyDevices(String adbPath) async {
 String? getAndroidSDKPath() {
   String? sdkPath = Platform.environment['ANDROID_HOME'];
   if (sdkPath == null) {
-    print('The ANDROID_HOME environment variable is not set');
+    stdout.writeln('🤖 The ANDROID_HOME environment variable is not set');
     return null;
   }
+
   return sdkPath;
 }
 
@@ -764,18 +845,22 @@ class FakeAndroidDevice extends Device {
 
   @override
   Future<bool> installApp(
-      String executablePath, covariant AndroidApk app) async {
-    print('installApp');
+    String executablePath,
+    covariant AndroidApk app,
+  ) async {
+    stdout.writeln('🤖 installApp');
     return true;
   }
 
   Future<void> grantPermissions(String executablePath, AndroidApk app) async {
-    print('Fetching required permissions');
+    stdout.writeln('🤖 Fetching required permissions');
   }
 
   @override
   Future<DebugSessionInformation> launchAppFromBinary(
-      String executablePath, covariant AndroidApk app) async {
+    String executablePath,
+    covariant AndroidApk app,
+  ) async {
     return DebugSessionInformation(debugUrl: 'Fake Android Device debugUrl');
   }
 

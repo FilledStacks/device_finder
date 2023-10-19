@@ -43,21 +43,33 @@ class AndroidApk extends ApplicationPackage {
 
   Future<List<String?>> getPermissions() async {
     try {
-      final result =
-          await Process.run(aaptPath!, ['d', 'permissions', filePath]);
-      final data = result.stdout.toString();
-      RegExp permissionPattern =
-          RegExp(r"(android\.permission\..*)\'", multiLine: true);
+      final result = await Process.run(
+        aaptPath!,
+        ['d', 'permissions', filePath],
+      );
+
+      stdout.writeln('🤖 ${result.stdout}');
+      if (result.exitCode != 0) {
+        stdout.writeln('🔴 ${result.stderr}');
+        throw 'Permits could not be obtained';
+      }
+
+      final permissionPattern = RegExp(
+        r"(android\.permission\..*)\'",
+        multiLine: true,
+      );
+
       final matches = permissionPattern
-          .allMatches(data)
+          .allMatches(result.stdout as String)
           .map((match) => match.group(1))
           .toList();
 
       if (matches.isEmpty) {
-        print('No permissions found');
+        stdout.writeln('🤖 No permissions found');
         return [];
       }
-      print('Permissions Found - $matches');
+
+      stdout.writeln('🤖 Permissions Found - $matches');
 
       return matches;
     } catch (err) {
@@ -92,24 +104,34 @@ class AndroidApk extends ApplicationPackage {
   static Future<AndroidApk?> fromApk(String aaptPath, String apkPath) async {
     try {
       final result = await Process.run(aaptPath, ['dump', 'badging', apkPath]);
+
+      stdout.writeln('🤖 ${result.stdout}');
+      if (result.exitCode != 0) {
+        stdout.writeln('🔴 ${result.stderr}');
+        throw 'Could not create a new AndroidApk';
+      }
+
       final data = result.stdout.toString();
       final startBefore = 'package: name=\'';
       final endBefore = '\' versionCode=\'';
-      var packageName = data.substring(
-          data.indexOf(startBefore) + startBefore.length,
-          data.indexOf(endBefore));
+      final packageName = data.substring(
+        data.indexOf(startBefore) + startBefore.length,
+        data.indexOf(endBefore),
+      );
 
-      final RegExp activityNameRegex =
-          RegExp(r"launchable-activity: name=\'(.*?)\'");
-      String? activityName = activityNameRegex.firstMatch(data)!.group(1);
+      final RegExp activityNameRegex = RegExp(
+        r"launchable-activity: name=\'(.*?)\'",
+      );
+      final activityName = activityNameRegex.firstMatch(data)!.group(1);
 
       if (activityName == null) {
-        print('Unable to read activity name from $apkPath.');
+        stdout.writeln('🤖 Unable to read activity name from $apkPath.');
         return null;
       }
 
-      print(
-          'Found package name - $packageName | Launchable Activity Name - $activityName');
+      stdout.writeln(
+        '🤖 Found package name - $packageName | Launchable Activity Name - $activityName',
+      );
 
       return AndroidApk(
         id: packageName,
@@ -117,8 +139,10 @@ class AndroidApk extends ApplicationPackage {
         launchActivity: activityName,
         aaptPath: aaptPath,
       );
-    } on ProcessException catch (error) {
-      print('Failed to extract manifest data from APK: $error.');
+    } on ProcessException catch (e, s) {
+      stdout.writeln(
+        '🔴 Failed to extract manifest data from APK: ${e.toString()}. StackTrace:\n$s',
+      );
       return null;
     }
   }
@@ -137,47 +161,42 @@ class IOSApp extends ApplicationPackage {
 
   @override
   Map<String, dynamic> toJson() {
-    return {
-      "id": id,
-      "filePath": filePath,
-    };
+    return {"id": id, "filePath": filePath};
   }
 
   factory IOSApp.fromJson(Map<String, dynamic> json) {
-    return IOSApp(
-      id: json["id"],
-      filePath: json["filePath"],
-    );
+    return IOSApp(id: json["id"], filePath: json["filePath"]);
   }
 
   /// Creates a new IOSApp from an existing .app build
-  static Future<IOSApp?> fromApp(
-    String plutilPath,
-    String appPath,
-  ) async {
+  static Future<IOSApp?> fromApp(String plutilPath, String appPath) async {
     try {
       final result = await Process.run(
         plutilPath,
         ['-convert', 'json', '-o', '-', '$appPath/Info.plist'],
       );
 
-      final data = result.stdout.toString();
-      Map info = json.decode(data);
+      stdout.writeln('🤖 ${result.stdout}');
+      if (result.exitCode != 0) {
+        stdout.writeln('🔴 ${result.stderr}');
+        throw 'Could not create a new IOSApp';
+      }
+
+      Map<String, dynamic> info = json.decode(result.stdout as String);
       final String? packageName = info['CFBundleIdentifier'];
 
       if (packageName == null) {
-        print('Unable to read info from $appPath.');
+        stdout.writeln('🤖 Unable to read info from $appPath.');
         return null;
       }
 
-      print('Found package name $packageName');
+      stdout.writeln('🤖 Found package name $packageName');
 
-      return IOSApp(
-        id: packageName,
-        filePath: appPath,
+      return IOSApp(id: packageName, filePath: appPath);
+    } on ProcessException catch (e, s) {
+      stdout.writeln(
+        '🔴 Failed to extract Info.plist data from the app: ${e.toString()}. StackTrace:\n$s',
       );
-    } on ProcessException catch (error) {
-      print('Failed to extract Info.plist data from the app: $error.');
       return null;
     }
   }
