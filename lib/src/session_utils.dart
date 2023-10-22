@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import '../devices.dart';
+import 'devices/device.dart';
 
 class SessionUtils {
   static Future<DebugSessionInformation?> getDebugSession({
