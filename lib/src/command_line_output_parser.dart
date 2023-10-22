@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'devices/ios_device.dart';
+import 'devices/ios_simulator_device.dart';
 
 /// This class parses expected command line outputs into a typed structure
 class CommandLineOutputParser {

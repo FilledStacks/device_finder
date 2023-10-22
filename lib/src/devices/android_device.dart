@@ -202,4 +202,20 @@ class AndroidDevice extends Device {
 
     return true;
   }
+
+  @override
+  Future<bool> pressEnterButton(String executablePath) async {
+    final result = await Process.run(
+      executablePath,
+      ['-s', identifier, 'shell', 'input', 'keyevent', 'KEYCODE_ENTER'],
+    );
+
+    stdout.writeln('🤖 ${result.stdout}');
+    if (result.exitCode != 0) {
+      stdout.writeln('🤖 ${result.stderr}');
+      throw 'Failed to press enter button on $identifier';
+    }
+
+    return true;
+  }
 }

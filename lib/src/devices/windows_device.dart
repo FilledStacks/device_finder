@@ -44,6 +44,12 @@ class WindowsDevice extends Device {
     // TODO: implement pressBackButton
     throw UnimplementedError();
   }
+
+  @override
+  Future<bool> pressEnterButton(String executablePath) {
+    // TODO: implement pressEnterButton
+    throw UnimplementedError();
+  }
 }
 
 class DeviceFinder {

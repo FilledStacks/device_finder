@@ -9,9 +9,7 @@ import 'dart:io';
 import 'package:device_finder/device_finder.dart';
 import 'package:device_finder/src/command_line_output_parser.dart';
 
-import 'android_device.dart';
-import 'ios_device.dart';
-import 'windows_device.dart';
+import 'ios_simulator_device.dart';
 
 const String ksJsonFieldDeviceName = 'name';
 const String ksJsonFieldDeviceIdentifier = 'identifier';
@@ -103,6 +101,7 @@ abstract class Device {
 
   Future<bool> killApp(String executablePath, ApplicationPackage app);
   Future<bool> pressHomeButton(String executablePath);
+  Future<bool> pressEnterButton(String executablePath);
   Future<bool> pressBackButton(String executablePath);
 
   @override
@@ -354,6 +353,12 @@ class FakeAndroidDevice extends Device {
   @override
   Future<bool> pressBackButton(String executablePath) {
     // TODO: implement pressBackButton
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> pressEnterButton(String executablePath) {
+    // TODO: implement pressEnterButton
     throw UnimplementedError();
   }
 }
