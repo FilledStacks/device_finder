@@ -1,6 +1,6 @@
 name: device_finder
 description: A package that helps with device specific actions
-version: 1.0.0
+version: 1.1.0
 homepage:
 
 environment:
