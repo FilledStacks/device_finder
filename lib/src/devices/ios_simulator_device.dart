@@ -199,13 +199,11 @@ class IOSSimulator extends Device {
 
   @override
   Future<bool> pressBackButton(String executablePath) {
-    // TODO: implement pressBackButton
-    throw UnimplementedError();
+    return Future.value(true);
   }
 
   @override
   Future<bool> pressEnterButton(String executablePath) {
-    // TODO: implement pressEnterButton
-    throw UnimplementedError();
+    return Future.value(true);
   }
 }
