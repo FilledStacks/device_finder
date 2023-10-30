@@ -206,4 +206,15 @@ class IOSSimulator extends Device {
   Future<bool> pressEnterButton(String executablePath) {
     return Future.value(true);
   }
+
+  @override
+  Future<bool> performDrag(
+      {required String executablePath,
+      required double startX,
+      required double startY,
+      required double endX,
+      required double endY}) {
+    // TODO: implement performDrag
+    throw UnimplementedError();
+  }
 }

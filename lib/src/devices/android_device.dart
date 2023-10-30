@@ -218,4 +218,41 @@ class AndroidDevice extends Device {
 
     return true;
   }
+
+  @override
+  Future<bool> performDrag({
+    required String executablePath,
+    required double startX,
+    required double startY,
+    required double endX,
+    required double endY,
+  }) async {
+    final swipeArguments = [
+      '-s',
+      identifier,
+      'shell',
+      'input',
+      'swipe',
+      '$startX',
+      '$startY',
+      '$endX',
+      '$endY',
+    ];
+
+    stdout.writeln(
+        'Perform swipe command through ADB: ${swipeArguments.join(' ')}');
+
+    final result = await Process.run(
+      executablePath,
+      swipeArguments,
+    );
+
+    stdout.writeln('🤖 ${result.stdout}');
+    if (result.exitCode != 0) {
+      stdout.writeln('🤖 ${result.stderr}');
+      throw 'Failed to swipe on $identifier';
+    }
+
+    return true;
+  }
 }

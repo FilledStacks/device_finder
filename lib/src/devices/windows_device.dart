@@ -50,15 +50,29 @@ class WindowsDevice extends Device {
     // TODO: implement pressEnterButton
     throw UnimplementedError();
   }
+
+  @override
+  Future<bool> performDrag(
+      {required String executablePath,
+      required double startX,
+      required double startY,
+      required double endX,
+      required double endY}) {
+    // TODO: implement performDrag
+    throw UnimplementedError();
+  }
 }
 
 class DeviceFinder {
   static Future<List<Device>> listReady({bool verbose = false}) async {
     try {
-      final flutterDevicesProcess = await Process.run('flutter', [
-        'devices',
-        if (verbose) '-v',
-      ]);
+      final flutterDevicesProcess = await Process.run(
+        'flutter',
+        [
+          'devices',
+          if (verbose) '-v',
+        ],
+      );
 
       // group 1: name
       // group 2: id

@@ -103,6 +103,13 @@ abstract class Device {
   Future<bool> pressHomeButton(String executablePath);
   Future<bool> pressEnterButton(String executablePath);
   Future<bool> pressBackButton(String executablePath);
+  Future<bool> performDrag({
+    required String executablePath,
+    required double startX,
+    required double startY,
+    required double endX,
+    required double endY,
+  });
 
   @override
   String toString() => '$name: $identifier';
@@ -359,6 +366,17 @@ class FakeAndroidDevice extends Device {
   @override
   Future<bool> pressEnterButton(String executablePath) {
     // TODO: implement pressEnterButton
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<bool> performDrag(
+      {required String executablePath,
+      required double startX,
+      required double startY,
+      required double endX,
+      required double endY}) {
+    // TODO: implement performDrag
     throw UnimplementedError();
   }
 }

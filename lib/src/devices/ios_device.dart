@@ -46,4 +46,15 @@ class IosDevice extends Device {
     // TODO: implement pressEnterButton
     throw UnimplementedError();
   }
+
+  @override
+  Future<bool> performDrag(
+      {required String executablePath,
+      required double startX,
+      required double startY,
+      required double endX,
+      required double endY}) {
+    // TODO: implement performDrag
+    throw UnimplementedError();
+  }
 }
