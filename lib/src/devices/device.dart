@@ -19,6 +19,7 @@ const String ksJsonFieldDeviceIsLocalEmulator = 'isLocalEmulator';
 const String ksJsonValueDevicePlatformAndroid = 'Android';
 const String ksJsonValueDevicePlatformIosSimulator = 'iOS Simulator';
 const String ksJsonValueDevicePlatformIosDevice = 'iOS';
+const String ksJsonValueDevicePlatformMacOS = 'macOS';
 const String ksJsonValueDevicePlatformWindows = 'Windows';
 
 /// Represents a device that is ready to run tests.
